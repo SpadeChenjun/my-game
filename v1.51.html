@@ -477,7 +477,7 @@
                 --font-size-md: 13px;
                 --font-size-lg: 16px;
                 --font-size-xl: 20px;
-                --font-size-title: 32px;
+                --font-age-title: 32px;
             }
             
             .game-container {
@@ -639,7 +639,7 @@
             flex: 1;
             min-width: 120px;
         }
-
+        
         .cost-highlight { color: #FFC107; }
         .realm-reward { color: #00FFFF; font-weight: bold; }
         .artifact-name { color: #FFC107; }
@@ -649,6 +649,7 @@
         .speed-bonus { color: #00BCD4; }
         .stones { color: #FFC107; }
         .pill-name { color: #00BCD4; }
+        .realm-speed { color: #FFC107; }
     </style>
 </head>
 <body>
@@ -657,16 +658,17 @@
     
     <!-- 调试信息面板 -->
     <div id="debugInfo" class="debug-info">
-        <div>版本: v1.5-丹药重构版</div>
+        <div>版本: v1.5-丹药重构版 + 境界速度加成</div>
         <div id="loadStatus">状态: 加载中...</div>
         <div id="functionStatus">函数: 未检查</div>
-        <button onclick="forceStart()" style="margin-top:5px; padding:5px; font-size:10px; min-width:80px;">强制启动</button>
+        <!-- 修改为使用ID而非内联onclick -->
+        <button id="forceStartBtn" style="margin-top:5px; padding:5px; font-size:10px; min-width:80px;">强制启动</button>
     </div>
 
     <!-- ==================== 封面 ==================== -->
     <div class="cover-container" id="coverContainer">
         <div class="cover-title">修仙模拟器</div>
-        <div class="cover-subtitle">v1.5-丹药重构版</div>
+        <div class="cover-subtitle">v1.5-丹药重构版 + 境界速度加成</div>
         <div class="cover-subtitle">丹道玄妙，破境飞升</div>
         <button class="start-button" id="startBtn">开始游戏</button>
     </div>
@@ -738,6 +740,10 @@
                             <div class="stat-row">
                                 <span class="stat-label">├─ 基础修炼</span>
                                 <span class="stat-value">+<span id="baseSpeed">1</span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">├─ 境界加成</span>
+                                <span class="stat-value realm-speed">+<span id="realmSpeedBonus">0</span></span>
                             </div>
                             <div class="stat-row">
                                 <span class="stat-label">├─ 功法加成</span>
@@ -865,7 +871,7 @@
                 <span id="saveStatus" style="margin-left: 15px; font-size: 14px;"></span>
             </div>
             <div class="version-info">
-                版本: v1.5-丹药重构版
+                版本: v1.5-丹药重构版 + 境界速度加成
             </div>
         </div>
 
@@ -908,7 +914,7 @@
 
         // ==================== 调试系统 ==================== 
         window.DEBUG_MODE = true;
-        window.version = "v1.5-丹药重构版";
+        window.version = "v1.5-丹药重构版 + 境界速度加成";
         
         window.debugLog = function(...args) {
             if (window.DEBUG_MODE) {
@@ -950,7 +956,8 @@
                 'GameUI': typeof GameUI,
                 'GameActions': typeof GameActions,
                 'GameCalculator': typeof GameCalculator,
-                'GameLoop': typeof GameLoop
+                'GameLoop': typeof GameLoop,
+                'forceStart': typeof forceStart
             };
             console.log("函数状态检查:", functions);
             const statusDiv = document.getElementById('functionStatus');
@@ -973,18 +980,18 @@
             autoCultivating: false,
             autoCultivateLogTimer: 0,
             pillSystem: null,
-            gameStarted: false // 新增：防止游戏重复启动
+            gameStarted: false
         };
 
         // ==================== 丹药配置 ==================== 
         window.GameConfig = {
-            // 境界系统（包含境界丹名称）
+            // 境界系统（新增speedBonus：每个境界的修炼速度加成）
             realmSystem: [
-                { name: "炼气期", stages: ["第1层", "第2层", "第3层", "第4层", "第5层", "第6层", "第7层", "第8层", "第9层", "圆满"], baseQi: 200, qiMultiplier: 1.5 },
-                { name: "筑基期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 1000, qiMultiplier: 2 },
-                { name: "金丹期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 5000, qiMultiplier: 2.5 },
-                { name: "元婴期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 20000, qiMultiplier: 3 },
-                { name: "化神期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 50000, qiMultiplier: 3.5 }
+                { name: "炼气期", stages: ["第1层", "第2层", "第3层", "第4层", "第5层", "第6层", "第7层", "第8层", "第9层", "圆满"], baseQi: 200, qiMultiplier: 1.5, speedBonus: 0 },
+                { name: "筑基期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 1000, qiMultiplier: 2, speedBonus: 2 },
+                { name: "金丹期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 5000, qiMultiplier: 2.5, speedBonus: 5 },
+                { name: "元婴期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 20000, qiMultiplier: 3, speedBonus: 10 },
+                { name: "化神期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 50000, qiMultiplier: 3.5, speedBonus: 20 }
             ],
             
             // 修为丹配置
@@ -1093,6 +1100,13 @@
                 const realm = GameConfig.realmSystem[realmIndex];
                 return Math.floor(realm.baseQi * Math.pow(realm.qiMultiplier, stageIndex));
             },
+            
+            // 新增：计算境界速度加成
+            getRealmSpeedBonus: function(realmIndex) {
+                const realm = GameConfig.realmSystem[realmIndex];
+                return realm.speedBonus || 0;
+            },
+            
             getUpgradeCost: function(player) { return 10 + player.realmIndex * 20 + player.stageIndex * 5; },
             calculateBreakthroughRate: function(player) { 
                 const baseRate = Math.max(5, 100 - player.stageIndex * 10); 
@@ -1157,10 +1171,9 @@
         }
 
         window.GameUI = {
-            isUIInitialized: false, // 新增：防止UI重复初始化
+            isUIInitialized: false,
             
             initStableUI: function() {
-                // 新增：检查是否已经初始化，防止重复绑定事件
                 if (this.isUIInitialized) {
                     console.log("【UI】已经初始化完成，跳过重复初始化");
                     return;
@@ -1192,18 +1205,16 @@
                 buttons.forEach(btn => {
                     const element = document.getElementById(btn.id);
                     if (element) {
-                        // 移除内联onclick，改用addEventListener
                         element.onclick = null;
                         element.addEventListener("click", function() { 
                             console.log(`【按钮】点击：${btn.id}`);
                             btn.action(); 
-                        }, { once: false }); // 添加once: false确保可以重复点击
+                        }, { once: false });
                     } else {
                         console.error(`【错误】找不到按钮：${btn.id}`);
                     }
                 });
                 
-                // 新增：绑定保存和加载按钮
                 const saveBtn = document.getElementById('saveBtn');
                 const loadBtn = document.getElementById('loadBtn');
                 if (saveBtn) {
@@ -1215,7 +1226,7 @@
                     loadBtn.addEventListener('click', function() { GameActions.loadGame(); });
                 }
                 
-                this.isUIInitialized = true; // 标记为已初始化
+                this.isUIInitialized = true;
                 console.log("【UI】事件监听器初始化完成！");
             },
             
@@ -1225,11 +1236,17 @@
                 
                 const maxQi = GameCalculator.getMaxQi(p.realmIndex, p.stageIndex);
                 const qiProgress = Math.min(100, Math.floor((p.qi / maxQi) * 100));
+                
+                // 计算各项加成（新增境界速度加成）
+                const realmSpeedBonus = GameCalculator.getRealmSpeedBonus(p.realmIndex);
                 const skillBonus = GameCalculator.calculateSkillBonus(GameState.skillSystem, p);
                 const artifactBonus = GameCalculator.calculateArtifactBonus(GameState.artifactSystem, p);
                 const sectBonus = GameCalculator.getSectBonus(GameState.sectSystem, "speed", p);
-                let totalSpeed = ((p.baseSpeed || 1) + skillBonus + artifactBonus + sectBonus) * (p.globalBonus || 1) * (p.qiGainBonus || 1);
+                
+                let totalSpeed = ((p.baseSpeed || 1) + realmSpeedBonus + skillBonus + artifactBonus + sectBonus) * (p.globalBonus || 1) * (p.qiGainBonus || 1);
                 if (p.artifactResonance > 0) totalSpeed *= 1.5;
+                if (p.manualCultivateBonus) totalSpeed *= p.manualCultivateBonus;
+                if (p.manualCultivatePenalty) totalSpeed *= p.manualCultivatePenalty;
                 
                 const yearsConsumed = Math.floor((p.maxLifespan - p.lifespan) / 365);
                 const displayAge = p.initialAge + yearsConsumed;
@@ -1245,7 +1262,8 @@
                     qi: el("qi"), 
                     maxQiDisplay: el("maxQiDisplay"), 
                     totalSpeed: el("totalSpeed"), 
-                    baseSpeed: el("baseSpeed"), 
+                    baseSpeed: el("baseSpeed"),
+                    realmSpeedBonus: el("realmSpeedBonus"),
                     totalSkillBonus: el("totalSkillBonus"), 
                     artifactBonusDisplay: el("artifactBonusDisplay"), 
                     caveBonusDisplay: el("caveBonusDisplay"), 
@@ -1270,6 +1288,7 @@
                 if (elements.maxQiDisplay) elements.maxQiDisplay.textContent = maxQi.toLocaleString();
                 if (elements.totalSpeed) elements.totalSpeed.textContent = totalSpeed.toFixed(1);
                 if (elements.baseSpeed) elements.baseSpeed.textContent = (p.baseSpeed || 1).toFixed(1);
+                if (elements.realmSpeedBonus) elements.realmSpeedBonus.textContent = realmSpeedBonus;
                 if (elements.totalSkillBonus) elements.totalSkillBonus.textContent = skillBonus;
                 if (elements.artifactBonusDisplay) elements.artifactBonusDisplay.textContent = artifactBonus;
                 if (elements.caveBonusDisplay) elements.caveBonusDisplay.textContent = sectBonus;
@@ -1356,6 +1375,7 @@
                 }
             },
             
+            // ... (其余toggle和generate方法保持不变)
             toggleSkillPanel: function() {
                 const panel = document.getElementById("skillPanel");
                 if (!panel) return;
@@ -1561,7 +1581,9 @@
                 const skillBonus = GameCalculator.calculateSkillBonus(GameState.skillSystem, p);
                 const artifactBonus = GameCalculator.calculateArtifactBonus(GameState.artifactSystem, p);
                 const sectBonus = GameCalculator.getSectBonus(GameState.sectSystem, "speed", p);
-                let totalSpeed = ((p.baseSpeed || 1) + skillBonus + artifactBonus + sectBonus) * (p.globalBonus || 1) * (p.qiGainBonus || 1);
+                const realmSpeedBonus = GameCalculator.getRealmSpeedBonus(p.realmIndex);
+                
+                let totalSpeed = ((p.baseSpeed || 1) + realmSpeedBonus + skillBonus + artifactBonus + sectBonus) * (p.globalBonus || 1) * (p.qiGainBonus || 1);
                 if (p.artifactResonance > 0) totalSpeed *= 1.5;
                 if (p.manualCultivateBonus) totalSpeed *= p.manualCultivateBonus;
                 if (p.manualCultivatePenalty) totalSpeed *= p.manualCultivatePenalty;
@@ -1675,12 +1697,16 @@
                 const successRate = GameCalculator.calculateBreakthroughRate(p);
                 GameUI.log('🔥 开始突破... 成功率: ' + successRate + '%');
                 if (Math.random() * 100 < successRate) {
+                    const oldRealmIndex = p.realmIndex;
                     p.stageIndex++;
                     const realm = GameConfig.realmSystem[p.realmIndex];
                     if (p.stageIndex >= realm.stages.length) {
                         if (p.realmIndex < GameConfig.realmSystem.length - 1) {
                             p.realmIndex++; p.stageIndex = 0;
+                            // 新增：大境界突破时增加修炼速度
+                            const realmBonus = GameCalculator.getRealmSpeedBonus(p.realmIndex);
                             GameUI.log('🎉 <span class="realm-reward">【大境界突破】</span> 成功进入' + GameConfig.realmSystem[p.realmIndex].name + '！');
+                            GameUI.log('✨ <span class="realm-reward">境界突破！修炼速度 +' + realmBonus + ' 点/秒</span>');
                             const lifespanReward = [0, 50, 80, 120, 200][p.realmIndex] || 0;
                             if (lifespanReward > 0) { p.maxLifespan += lifespanReward * 365; p.lifespan += lifespanReward * 365; GameUI.log('✨ <span class="realm-reward">寿元增加' + lifespanReward + '年！</span>'); }
                             if (p.realmIndex < 4) { 
@@ -1798,7 +1824,7 @@
                     sectSystem: GameState.sectSystem, 
                     talentSystem: GameState.talentSystem,
                     pillSystem: GameState.pillSystem,
-                    version: "v1.5-丹药重构版" 
+                    version: "v1.5-丹药重构版 + 境界速度加成" 
                 };
                 localStorage.setItem("immortalCultivatorSave", JSON.stringify(saveData));
                 GameUI.log("💾 游戏已保存");
@@ -1870,7 +1896,6 @@
         };
 
         window.startGame = function() {
-            // 新增：防止游戏重复启动
             if (GameState.gameStarted) {
                 console.log("【警告】游戏已经启动，忽略重复的startGame调用");
                 return;
@@ -1878,8 +1903,6 @@
             
             console.log("========== 【开始游戏】函数被调用 ==========");
             console.log("版本:", window.version);
-            console.log("GameState:", GameState);
-            console.log("GameConfig:", GameConfig);
             
             try {
                 GameState.player = {
@@ -1987,7 +2010,7 @@
                 GameUI.log("💡 提示：按 ` 键可切换调试模式");
                 console.log("========== 游戏初始化全部完成 ==========");
                 
-                GameState.gameStarted = true; // 标记游戏已启动
+                GameState.gameStarted = true;
                 
             } catch (error) {
                 console.error("【致命错误】游戏初始化失败:", error);
@@ -2005,10 +2028,21 @@
             
             checkFunctions();
             
+            // 新增：绑定强制启动按钮
+            const forceStartBtn = document.getElementById('forceStartBtn');
+            if (forceStartBtn) {
+                forceStartBtn.onclick = null; // 清除可能存在的内联事件
+                forceStartBtn.addEventListener('click', function() {
+                    console.log("【强制启动按钮】被点击");
+                    forceStart();
+                });
+            } else {
+                console.error("【错误】找不到强制启动按钮！");
+            }
+            
             setTimeout(function() {
                 const startBtn = document.getElementById('startBtn');
                 if (startBtn) {
-                    // 移除可能存在的旧事件监听器
                     startBtn.onclick = null;
                     startBtn.addEventListener('click', function() {
                         console.log("【按钮点击】开始游戏");
