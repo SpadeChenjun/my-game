@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>修仙模拟器v1.5-丹药重构版</title>
+    <style>
+        /* ==================== 原有样式保持不变 ==================== */
+        :root {
+            --primary-color: #00BCD4;
+            --primary-glow: rgba(0, 188, 212, 0.8);
+            --bg-dark: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-hover: #1e2a4a;
+            --text-normal: #ffffff;
+            --text-dim: #aaaaaa;
+            --text-success: #4CAF50;
+            --text-danger: #f44336;
+            --text-warning: #FFC107;
+            --border-color: #2a3f5f;
+            --shadow-glow: 0 0 25px rgba(0, 255, 255, 0.3);
+            
+            --font-size-xs: clamp(10px, 1.5vw, 12px);
+            --font-size-sm: clamp(12px, 2vw, 14px);
+            --font-size-md: clamp(14px, 2.5vw, 16px);
+            --font-size-lg: clamp(18px, 3vw, 24px);
+            --font-size-xl: clamp(24px, 5vw, 36px);
+            --font-size-title: clamp(36px, 8vw, 72px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "微软雅黑", sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-normal);
+            text-align: center;
+            padding: min(20px, 2vw);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            font-size: var(--font-size-md);
+            line-height: 1.4;
+        }
+
+        .cover-container {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease-out;
+            padding: 2vw;
+        }
+        
+        .cover-title {
+            font-size: var(--font-size-title);
+            font-weight: bold;
+            color: var(--primary-color);
+            text-shadow: 0 0 30px var(--primary-glow);
+            margin-bottom: min(50px, 5vh);
+            letter-spacing: 0.1em;
+            word-wrap: break-word;
+            max-width: 90vw;
+        }
+        
+        .cover-subtitle {
+            font-size: var(--font-size-lg);
+            color: var(--text-dim);
+            margin-bottom: min(100px, 10vh);
+            font-style: italic;
+            max-width: 80vw;
+        }
+        
+        .start-button {
+            background: linear-gradient(135deg, #0f3460, var(--primary-color));
+            color: white;
+            border: none;
+            padding: min(20px, 4vw) min(60px, 8vw);
+            font-size: var(--font-size-lg);
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 10px 30px var(--primary-glow);
+            transition: all 0.3s ease;
+            min-width: min(280px, 80vw);
+            max-width: 90vw;
+            letter-spacing: 0.05em;
+        }
+        
+        .start-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px var(--primary-glow);
+        }
+
+        .game-container {
+            width: min(1400px, 95vw);
+            max-width: 95vw;
+            margin: 0 auto;
+            background: var(--bg-card);
+            padding: min(25px, 3vw);
+            border-radius: 15px;
+            box-shadow: var(--shadow-glow);
+            display: none;
+            min-height: 600px;
+            max-height: 98vh;
+            overflow: hidden;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: min(25px, 3vw);
+            height: 100%;
+            max-height: calc(98vh - 150px);
+        }
+
+        .left-panel {
+            flex: 0 0 min(400px, 35vw);
+            display: flex;
+            flex-direction: column;
+            gap: min(15px, 2vh);
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: min(15px, 2vh);
+            min-width: 0;
+        }
+
+        .collapsible-panel {
+            background: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .collapsible-panel:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .panel-header {
+            padding: min(12px, 1.5vw);
+            background: rgba(0, 188, 212, 0.1);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        .panel-header:hover {
+            background: rgba(0, 188, 212, 0.2);
+        }
+
+        .panel-header::after {
+            content: "▼";
+            font-size: var(--font-size-sm);
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible-panel.collapsed .panel-header::after {
+            transform: rotate(-90deg);
+        }
+
+        .panel-content {
+            padding: min(18px, 2vw);
+            max-height: 1000px;
+            transition: max-height 0.5s ease, padding 0.5s ease;
+        }
+
+        .collapsible-panel.collapsed .panel-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            overflow: hidden;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: min(8px, 1vh) 0;
+            font-size: var(--font-size-md);
+            padding: min(3px, 0.5vh) 0;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-label {
+            color: var(--text-dim);
+            font-size: var(--font-size-sm);
+            flex-shrink: 0;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: var(--text-normal);
+            word-break: break-word;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        .progress-container {
+            margin: min(10px, 1.5vh) 0;
+            height: min(22px, 3vw);
+            background: var(--bg-card);
+            border-radius: 11px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            width: 100%;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), #00FFFF);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: min(8px, 1vw);
+            font-size: var(--font-size-xs);
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            white-space: nowrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #0f3460, #1e5a8c);
+            color: white;
+            border: none;
+            padding: min(14px, 2vw) min(20px, 3vw);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: var(--font-size-md);
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 8px rgba(0,0,0,0,0.3);
+            margin: min(5px, 1vw);
+            min-width: min(160px, 45vw);
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px var(--primary-glow);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(160px, 45vw), 1fr));
+            gap: min(5px, 1vw);
+            justify-items: center;
+        }
+        
+        .system-buttons {
+            grid-template-columns: repeat(auto-fit, minmax(min(200px, 40vw), 1fr));
+        }
+
+        .action-category {
+            margin: min(20px, 3vh) 0;
+            padding-top: min(15px, 2vh);
+            border-top: 1px solid #444;
+        }
+
+        .bonus-details {
+            margin-top: min(10px, 1.5vh);
+            font-size: var(--font-size-sm);
+        }
+        
+        .bonus-details summary {
+            cursor: pointer;
+            color: var(--primary-color);
+            margin-bottom: min(8px, 1vh);
+        }
+
+        .log-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: min(15px, 2vw);
+            height: min(400px, 50vh);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-header {
+            font-size: var(--font-size-lg);
+            color: var(--primary-color);
+            margin-bottom: min(10px, 1.5vh);
+            text-shadow: 0 0 20px var(--primary-glow);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        #log {
+            background: var(--bg-dark);
+            border-left: 4px solid var(--primary-color);
+            padding: min(14px, 2vw) min(18px, 2vw);
+            flex: 1;
+            border-radius: 0 8px 8px 0;
+            font-size: var(--font-size-md);
+            line-height: 1.6;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
+            text-align: left;
+        }
+
+        /* ==================== 修复弹窗居中问题 ==================== */
+        .skill-panel, .artifact-panel, .sect-panel, .relic-panel, .pill-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-dark);
+            border: 2px solid;
+            border-radius: 15px;
+            padding: min(25px, 3vw);
+            width: min(650px, 95vw);
+            max-width: 95vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 0 40px;
+            z-index: 3000;
+            display: none;
+        }
+        
+        .close-panel-btn {
+            position: absolute;
+            top: min(10px, 1.5vw);
+            right: min(15px, 2vw);
+            background: #FF5722;
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: min(30px, 5vw);
+            height: min(30px, 5vw);
+            cursor: pointer;
+            font-size: var(--font-size-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: min(30px, 5vw);
+        }
+
+        .save-buttons {
+            background: rgba(22, 33, 62, 0.9);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: min(12px, 1.5vw);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .save-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .version-info {
+            font-size: var(--font-size-sm);
+            color: var(--text-dim);
+            background: rgba(0,0,0,0.3);
+            padding: 5px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            font-family: monospace;
+        }
+
+        .tribulation-warning {
+            color: #FF0000;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        .talent-positive { color: #4CAF50; }
+        .talent-negative { color: #f44336; }
+        .talent-neutral { color: #FFC107; }
+
+        .event-positive { color: #4CAF50; font-weight: bold; }
+        .event-negative { color: #f44336; font-weight: bold; }
+        .event-neutral { color: #FFC107; }
+
+        @media (max-width: 1100px) {
+            .game-container {
+                width: 98vw;
+                padding: 2vw;
+            }
+            .main-layout {
+                flex-direction: column;
+            }
+            .left-panel {
+                flex: 1;
+                width: 100%;
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .left-panel {
+                flex: 1;
+                width: 100%;
+                max-height: none;
+            }
+            .button-grid {
+                grid-template-columns: 1fr;
+            }
+            .stat-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+            .save-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .skill-panel, .artifact-panel, .sect-panel, .relic-panel {
+                width: 98vw;
+                height: 98vh;
+                max-height: 98vh;
+                border-radius: 0;
+                top: 0 !important;
+                left: 0 !important;
+                transform: none !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            :root {
+                --font-size-xs: 10px;
+                --font-size-sm: 11px;
+                --font-size-md: 13px;
+                --font-size-lg: 16px;
+                --font-size-xl: 20px;
+                --font-size-title: 32px;
+            }
+            
+            .game-container {
+                padding: 3vw;
+                border-radius: 0;
+                max-height: 100vh;
+            }
+            
+            .main-layout {
+                gap: 10px;
+            }
+            
+            .left-panel {
+                gap: 10px;
+            }
+            
+            .right-panel {
+                gap: 10px;
+            }
+            
+            .start-button {
+                padding: 4vw 6vw;
+                min-width: 90vw;
+            }
+            
+            button {
+                padding: 3vw 4vw;
+                min-width: 90vw;
+            }
+            
+            .log-container {
+                height: min(300px, 40vh);
+            }
+        }
+
+        .hidden { opacity: 0 !important; pointer-events: none !important; }
+
+        .debug-console {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: rgba(0,0,0,0.9);
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 10px;
+            overflow-y: auto;
+            z-index: 4000;
+            display: none;
+            border-bottom: 1px solid #333;
+        }
+
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 3000;
+            max-width: 300px;
+            display: none;
+        }
+
+        /* ==================== 新增丹药面板样式 ==================== */
+        .pill-type-section {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .pill-type-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--primary-color);
+        }
+
+        .pill-type-cultivation { color: #4CAF50; }
+        .pill-type-realm { color: #00BCD4; }
+
+        .pill-item {
+            background: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            transition: all 0.3s ease;
+        }
+
+        .pill-item:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .pill-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .pill-desc {
+            font-size: 14px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .pill-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+
+        .stat-item span:first-child {
+            color: var(--text-dim);
+        }
+
+        .stat-item span:last-child {
+            font-weight: bold;
+        }
+
+        .current-pill-info {
+            background: rgba(0, 188, 212, 0.1);
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .current-pill-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .pill-action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pill-action-buttons button {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .cost-highlight { color: #FFC107; }
+        .realm-reward { color: #00FFFF; font-weight: bold; }
+        .artifact-name { color: #FFC107; }
+        .sect-name { color: #4CAF50; }
+        .sect-contribution { color: #00BCD4; }
+        .skill-effective { color: #4CAF50; }
+        .speed-bonus { color: #00BCD4; }
+        .stones { color: #FFC107; }
+        .pill-name { color: #00BCD4; }
+    </style>
+</head>
+<body>
+    <!-- 调试控制台 -->
+    <div id="debugConsole" class="debug-console"></div>
+    
+    <!-- 调试信息面板 -->
+    <div id="debugInfo" class="debug-info">
+        <div>版本: v1.5-丹药重构版</div>
+        <div id="loadStatus">状态: 加载中...</div>
+        <div id="functionStatus">函数: 未检查</div>
+        <button onclick="forceStart()" style="margin-top:5px; padding:5px; font-size:10px; min-width:80px;">强制启动</button>
+    </div>
+
+    <!-- ==================== 封面 ==================== -->
+    <div class="cover-container" id="coverContainer">
+        <div class="cover-title">修仙模拟器</div>
+        <div class="cover-subtitle">v1.5-丹药重构版</div>
+        <div class="cover-subtitle">丹道玄妙，破境飞升</div>
+        <button class="start-button" id="startBtn">开始游戏</button>
+    </div>
+
+    <!-- ==================== 游戏主界面 ==================== -->
+    <div class="game-container" id="gameContainer" style="display: none;">
+        <!-- 主布局：左右分栏 -->
+        <div class="main-layout">
+            <!-- 左侧：属性面板 -->
+            <div class="left-panel">
+                <!-- 👤 人物属性 -->
+                <div class="collapsible-panel" id="characterPanel">
+                    <div class="panel-header">👤 人物属性</div>
+                    <div class="panel-content">
+                        <div class="stat-row">
+                            <span class="stat-label">姓名</span>
+                            <span class="stat-value" id="playerName">无名氏</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">年龄</span>
+                            <span class="stat-value" id="playerAge">18岁</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">境界</span>
+                            <span class="stat-value realm-info" id="playerRealm">炼气期 第1层</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">剩余寿元</span>
+                            <span class="stat-value time-display" id="playerLifespan">20年0天</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 💎 天赋异禀 -->
+                <div class="collapsible-panel" id="talentPanel">
+                    <div class="panel-header">💎 天赋异禀</div>
+                    <div class="panel-content" id="talentContent">
+                        <!-- 天赋内容动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 🔥 修炼状态 -->
+                <div class="collapsible-panel" id="cultivationPanel">
+                    <div class="panel-header">🔥 修炼状态</div>
+                    <div class="panel-content">
+                        <div class="stat-row">
+                            <span class="stat-label">当前境界</span>
+                            <span class="stat-value" id="fullRealm">炼气期 第1层</span>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="qiBar" style="width: 0%;">
+                                <span id="qiProgressText">0%</span>
+                            </div>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">修为进度</span>
+                            <span class="stat-value">
+                                <span id="qi">0</span> / <span id="maxQiDisplay">200</span>
+                            </span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">总修炼速度</span>
+                            <span class="stat-value speed-bonus">
+                                ⚡ <span id="totalSpeed">1</span> 点/秒
+                            </span>
+                        </div>
+                        <details class="bonus-details" id="bonusDetails">
+                            <summary>查看加成明细</summary>
+                            <div class="stat-row">
+                                <span class="stat-label">├─ 基础修炼</span>
+                                <span class="stat-value">+<span id="baseSpeed">1</span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">├─ 功法加成</span>
+                                <span class="stat-value skill-effective">+<span id="totalSkillBonus">0</span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">├─ 法宝加成</span>
+                                <span class="stat-value">+<span id="artifactBonusDisplay">0</span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">└─ 宗门加成</span>
+                                <span class="stat-value">+<span id="caveBonusDisplay">0</span></span>
+                            </div>
+                        </details>
+                        <!-- 天劫警告 -->
+                        <div id="tribulationWarning" class="tribulation-warning" style="display:none; margin-top:10px; text-align:center;">
+                            ⚡ 天劫将至！
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 💎 资源资产 -->
+                <div class="collapsible-panel" id="resourcePanel">
+                    <div class="panel-header">💎 资源资产</div>
+                    <div class="panel-content">
+                        <div class="stat-row">
+                            <span class="stat-label">💎 灵石</span>
+                            <span class="stat-value stones" id="stonesDisplay">50</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">💊 修为丹</span>
+                            <span class="stat-value" id="cultivationPillsDisplay">0 颗</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">🌟 境界丹</span>
+                            <span class="stat-value" id="realmPillsDisplay">0 颗</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">当前丹药</span>
+                            <span class="stat-value pill-name" id="currentPillName">筑基丹</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🌟 特殊状态 -->
+                <div class="collapsible-panel" id="specialStatusPanel">
+                    <div class="panel-header">🌟 特殊状态</div>
+                    <div class="panel-content" id="specialStatusContent">
+                        <!-- 特殊状态内容动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：日志 + 操作区 -->
+            <div class="right-panel">
+                <!-- 📜 日志区域 -->
+                <div class="log-container">
+                    <div class="log-header">📜 修炼日志</div>
+                    <div id="log">
+                        欢迎来到修仙世界！<br>
+                        提示：点击左侧面板标题可以展开/收起
+                    </div>
+                </div>
+
+                <!-- ⚡ 操作按钮区 -->
+                <div class="action-area">
+                    <!-- 修炼操作 -->
+                    <div class="action-category">
+                        <div class="stat-header">⚡ 修炼操作</div>
+                        <div class="button-grid">
+                            <button id="cultivateBtn" class="btn-primary">🧘 打坐修炼</button>
+                            <button id="autoCultivateBtn" class="btn-secondary">🤖 开启自动修炼</button>
+                            <button id="upgradeBtn" class="btn-secondary">📈 提升资质</button>
+                            <button id="breakthroughBtn" style="display:none;">🔥 尝试突破</button>
+                        </div>
+                        <div id="successRateContainer" style="margin-top:12px; text-align:center; display:none;">
+                            <span class="stat-label">突破成功率: </span>
+                            <span class="success-rate" id="successRate">0%</span>
+                            <span id="pillBonus"></span>
+                        </div>
+                    </div>
+
+                    <!-- 💊 丹药操作 -->
+                    <div class="action-category">
+                        <div class="stat-header">💊 丹药系统</div>
+                        <div class="button-grid">
+                            <button id="makePillBtn" class="btn-primary">⚗️ 炼制丹药</button>
+                            <button id="useCultivationPillBtn" class="btn-secondary" style="display:none;">💊 使用修为丹</button>
+                            <button id="useRealmPillBtn" class="btn-secondary" style="display:none;">🌟 使用境界丹</button>
+                            <button id="pillPanelBtn" class="system-btn">📜 丹药详情</button>
+                        </div>
+                    </div>
+
+                    <!-- 🎮 辅助系统 -->
+                    <div class="action-category">
+                        <div class="stat-header">🎮 辅助系统</div>
+                        <div class="button-grid system-buttons">
+                            <button id="skillPanelBtn" class="system-btn skills">
+                                📜 功法系统
+                                <small>已学: <span id="skillCount">0</span>本</small>
+                            </button>
+                            <button id="artifactPanelBtn" class="system-btn artifacts">
+                                🗡️ 法宝系统
+                                <small id="artifactStatus">未装备</small>
+                            </button>
+                            <button id="sectPanelBtn" class="system-btn sect">
+                                🏛️ 宗门系统
+                                <small id="sectStatus">未加入</small>
+                            </button>
+                            <button id="relicPanelBtn" class="system-btn relics">
+                                🏛️ 探索遗迹
+                                <small>寻找宝物</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部：存档按钮 + 版本信息 -->
+        <div class="save-buttons">
+            <div class="save-actions">
+                <button id="saveBtn">💾 保存进度</button>
+                <button id="loadBtn">📂 读取进度</button>
+                <span id="saveStatus" style="margin-left: 15px; font-size: 14px;"></span>
+            </div>
+            <div class="version-info">
+                版本: v1.5-丹药重构版
+            </div>
+        </div>
+
+        <!-- 弹窗面板 -->
+        <div id="skillPanel" class="skill-panel" style="display:none; z-index:3001;">
+            <button class="close-panel-btn" onclick="GameUI.toggleSkillPanel()">×</button>
+            <h2>📜 功法系统</h2>
+            <div id="skillPanelContent">加载中...</div>
+        </div>
+        <div id="artifactPanel" class="artifact-panel" style="display:none; z-index:3001;">
+            <button class="close-panel-btn" onclick="GameUI.toggleArtifactPanel()">×</button>
+            <h2>🗡️ 法宝系统</h2>
+            <div id="artifactPanelContent">加载中...</div>
+        </div>
+        <div id="sectPanel" class="sect-panel" style="display:none; z-index:3001;">
+            <button class="close-panel-btn" onclick="GameUI.toggleSectPanel()">×</button>
+            <h2>🏛️ 宗门系统</h2>
+            <div id="sectPanelContent">加载中...</div>
+        </div>
+        <div id="relicPanel" class="relic-panel" style="display:none; z-index:3001;">
+            <button class="close-panel-btn" onclick="GameUI.toggleRelicPanel()">×</button>
+            <h2>🏛️ 探索遗迹</h2>
+            <div id="relicPanelContent">加载中...</div>
+        </div>
+        
+        <!-- 丹药详情面板 -->
+        <div id="pillPanel" class="pill-panel" style="display:none; z-index:3001; border-color: #00BCD4;">
+            <button class="close-panel-btn" onclick="GameUI.togglePillPanel()">×</button>
+            <h2>💊 丹药系统详情</h2>
+            <div id="pillPanelContent">加载中...</div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 全局错误处理 ==================== 
+        window.addEventListener('error', function(e) {
+            console.error('【全局错误捕获】', e.error);
+            alert('游戏出错: ' + e.error.message + '\n请按F12查看控制台');
+        });
+
+        // ==================== 调试系统 ==================== 
+        window.DEBUG_MODE = true;
+        window.version = "v1.5-丹药重构版";
+        
+        window.debugLog = function(...args) {
+            if (window.DEBUG_MODE) {
+                console.log('[DEBUG]', ...args);
+                const debugConsole = document.getElementById('debugConsole');
+                if (debugConsole) {
+                    const message = args.map(arg => 
+                        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                    ).join(' ');
+                    debugConsole.innerHTML += message + '<br>';
+                    debugConsole.scrollTop = debugConsole.scrollHeight;
+                }
+            }
+        };
+        
+        window.toggleDebug = function() {
+            window.DEBUG_MODE = !window.DEBUG_MODE;
+            const debugConsole = document.getElementById('debugConsole');
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugConsole) debugConsole.style.display = window.DEBUG_MODE ? 'block' : 'none';
+            if (debugInfo) debugInfo.style.display = window.DEBUG_MODE ? 'block' : 'none';
+            console.log('调试模式:', window.DEBUG_MODE ? '开启' : '关闭');
+        };
+
+        // ==================== 强制启动函数 ==================== 
+        window.forceStart = function() {
+            console.log("【强制启动】被调用");
+            if (typeof startGame === 'function') {
+                startGame();
+            } else {
+                alert('startGame 函数未定义！请查看控制台');
+            }
+        };
+
+        // ==================== 验证函数定义 ==================== 
+        window.checkFunctions = function() {
+            const functions = {
+                'startGame': typeof startGame,
+                'GameUI': typeof GameUI,
+                'GameActions': typeof GameActions,
+                'GameCalculator': typeof GameCalculator,
+                'GameLoop': typeof GameLoop
+            };
+            console.log("函数状态检查:", functions);
+            const statusDiv = document.getElementById('functionStatus');
+            if (statusDiv) {
+                statusDiv.textContent = '函数: ' + (functions.startGame === 'function' ? '正常' : '异常');
+            }
+            return functions;
+        };
+
+        // ==================== 定义核心对象 ==================== 
+        console.log("========== 游戏脚本开始加载 ==========");
+        
+        window.GameState = {
+            player: null,
+            skillSystem: null,
+            artifactSystem: null,
+            sectSystem: null,
+            talentSystem: null,
+            gameLoop: null,
+            autoCultivating: false,
+            autoCultivateLogTimer: 0,
+            pillSystem: null,
+            gameStarted: false // 新增：防止游戏重复启动
+        };
+
+        // ==================== 丹药配置 ==================== 
+        window.GameConfig = {
+            // 境界系统（包含境界丹名称）
+            realmSystem: [
+                { name: "炼气期", stages: ["第1层", "第2层", "第3层", "第4层", "第5层", "第6层", "第7层", "第8层", "第9层", "圆满"], baseQi: 200, qiMultiplier: 1.5 },
+                { name: "筑基期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 1000, qiMultiplier: 2 },
+                { name: "金丹期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 5000, qiMultiplier: 2.5 },
+                { name: "元婴期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 20000, qiMultiplier: 3 },
+                { name: "化神期", stages: ["初期", "中期", "后期", "圆满"], baseQi: 50000, qiMultiplier: 3.5 }
+            ],
+            
+            // 修为丹配置
+            cultivationPills: [
+                { id: "qi_gathering", name: "聚气丹", power: 50, cost: 20, desc: "直接增加50点修为", minRealm: 0 },
+                { id: "spirit_gathering", name: "聚灵丹", power: 150, cost: 50, desc: "直接增加150点修为", minRealm: 1 },
+                { id: "spirit_condensing", name: "凝元丹", power: 500, cost: 150, desc: "直接增加500点修为", minRealm: 2 },
+                { id: "yuan_condensing", name: "凝婴丹", power: 2000, cost: 400, desc: "直接增加2000点修为", minRealm: 3 }
+            ],
+            
+            // 境界丹配置（每个境界固定）
+            realmPills: [
+                { id: "foundation", name: "筑基丹", power: 15, cost: 30, desc: "筑基必备，提升突破成功率15%", minRealm: 0, maxRealm: 1 },
+                { id: "golden_core", name: "金元丹", power: 20, cost: 80, desc: "结丹必备，提升突破成功率20%", minRealm: 1, maxRealm: 2 },
+                { id: "yuan_baby", name: "化婴丹", power: 25, cost: 200, desc: "凝婴必备，提升突破成功率25%", minRealm: 2, maxRealm: 3 },
+                { id: "spirit_intent", name: "神意丹", power: 30, cost: 500, desc: "化神必备，提升突破成功率30%", minRealm: 3, maxRealm: 4 }
+            ],
+            
+            // 丹药对应关系（每个境界对应固定的修为丹和境界丹）
+            pillMapping: {
+                0: { cultivationPillId: "qi_gathering", realmPillId: "foundation", realmPillName: "筑基丹" },
+                1: { cultivationPillId: "spirit_gathering", realmPillId: "golden_core", realmPillName: "金元丹" },
+                2: { cultivationPillId: "spirit_condensing", realmPillId: "yuan_baby", realmPillName: "化婴丹" },
+                3: { cultivationPillId: "yuan_condensing", realmPillId: "spirit_intent", realmPillName: "神意丹" },
+                4: { cultivationPillId: "yuan_condensing", realmPillId: "spirit_intent", realmPillName: "神意丹" }
+            },
+            
+            skills: [
+                { id: "basic_cultivation", name: "基础吐纳法", tier: "common", bonus: 1, desc: "最基础的修炼法门", realmReq: 0, cost: 50 },
+                { id: "spirit_gathering", name: "聚灵诀", tier: "common", bonus: 2, desc: "加快灵气聚集", realmReq: 0, cost: 50 },
+                { id: "five_elements", name: "五行炼气术", tier: "uncommon", bonus: 4, desc: "五行相生，修炼加速", realmReq: 0, cost: 150 },
+                { id: "heavenly_circulation", name: "周天搬运法", tier: "uncommon", bonus: 6, desc: "运转周天，效率提升", realmReq: 1, cost: 150 },
+                { id: "golden_core_formation", name: "金丹凝聚术", tier: "rare", bonus: 10, desc: "金丹期专用秘法", realmReq: 1, cost: 400 }
+            ],
+            
+            artifacts: [
+                { id: "spirit_sword", name: "灵剑", tier: "common", bonus: 2, desc: "普通飞剑", cost: 500, realmReq: 0 },
+                { id: "jade_pendant", name: "聚灵玉佩", tier: "common", bonus: 3, desc: "聚灵养气", cost: 500, realmReq: 0 },
+                { id: "bronze_mirror", name: "青铜古镜", tier: "uncommon", bonus: 5, desc: "古修士遗留", cost: 500, realmReq: 1 }
+            ],
+            
+            sects: [
+                { id: "small_sect", name: "小门派", tier: "common", joinCost: 0, desc: "小门派，无门槛", realmReq: 0, benefit: { stones: 0, speed: 0 } },
+                { id: "spirit_sect", name: "灵云宗", tier: "uncommon", joinCost: 100, desc: "中等宗门，需100灵石", realmReq: 1, benefit: { stones: 0, speed: 1 } },
+                { id: "golden_sect", name: "金丹门", tier: "rare", joinCost: 300, desc: "金丹大宗，需300灵石", realmReq: 2, benefit: { stones: 0, speed: 2 } }
+            ],
+            
+            relics: [
+                { id: "ancient_cave", name: "古修洞府", cost: 5, minReward: 20, maxReward: 50, desc: "普通修士遗留" },
+                { id: "secret_realm", name: "秘境", cost: 10, minReward: 50, maxReward: 150, desc: "神秘空间" },
+                { id: "ancient_battlefield", name: "上古战场", cost: 20, minReward: 150, maxReward: 400, desc: "危险但宝物丰富" }
+            ],
+            
+            talents: [
+                { id: "prodigy", name: "修炼奇才", type: "positive", desc: "基础修炼速度+2", effect: function(p) { p.baseSpeed += 2; } },
+                { id: "wealthy", name: "富家子弟", type: "positive", desc: "初始灵石+300", effect: function(p) { p.stones += 300; } },
+                { id: "long_life", name: "长命百岁", type: "positive", desc: "初始寿命+5年", effect: function(p) { p.maxLifespan += 5 * 365; p.lifespan += 5 * 365; } },
+                { id: "lucky", name: "气运之子", type: "positive", desc: "突破成功率+10%", effect: function(p) { p.breakthroughBonus = (p.breakthroughBonus || 0) + 10; } },
+                { id: "spirit_body", name: "灵体", type: "positive", desc: "修炼速度+1", effect: function(p) { p.baseSpeed += 1; } },
+                { id: "immortal_bone", name: "仙骨", type: "positive", desc: "所有修炼效率+20%", effect: function(p) { p.globalBonus = (p.globalBonus || 1) + 0.2; } },
+                { id: "phoenix_blood", name: "凤凰血脉", type: "positive", desc: "突破失败时修为损失减半", effect: function(p) { p.phoenixBlessing = true; } },
+                { id: "lucky_star", name: "福缘深厚", type: "positive", desc: "奇遇触发概率+200%，奇遇品质更好", effect: function(p) { p.luck = (p.luck || 1) * 3; } },
+                { id: "poor_root", name: "资质平庸", type: "negative", desc: "基础修炼速度-0.5", effect: function(p) { p.baseSpeed -= 0.5; } },
+                { id: "poor", name: "家徒四壁", type: "negative", desc: "初始灵石-30", effect: function(p) { p.stones -= 30; } },
+                { id: "sickly", name: "体弱多病", type: "negative", desc: "初始寿命-3年", effect: function(p) { p.maxLifespan -= 3 * 365; p.lifespan -= 3 * 365; } },
+                { id: "unlucky", name: "霉运缠身", type: "negative", desc: "突破成功率-5%", effect: function(p) { p.breakthroughBonus = (p.breakthroughBonus || 0) - 5; } },
+                { id: "waste_body", name: "废体", type: "negative", desc: "修炼速度-1", effect: function(p) { p.baseSpeed -= 1; } },
+                { id: "thief", name: "盗贼", type: "positive", desc: "探索遗迹获得额外灵石", effect: function(p) { p.thiefBonus = true; } },
+                { id: "balanced", name: "中庸之道", type: "neutral", desc: "所有属性+5%，所有消耗+5%", effect: function(p) { p.baseSpeed *= 1.05; p.globalBonus = (p.globalBonus || 1) + 0.05; p.priceIncrease = (p.priceIncrease || 1) + 0.05; } },
+                { id: "gambler", name: "赌徒", type: "neutral", desc: "突破成功率±15%随机", effect: function(p) { p.breakthroughRandom = true; } },
+                { id: "ascetic", name: "苦修者", type: "neutral", desc: "无法使用丹药，但基础修炼速度+3", effect: function(p) { p.noPills = true; p.baseSpeed += 3; } }
+            ],
+            
+            randomEvents: [
+                { name: "发现灵石矿脉", type: "positive", effect: function(p) { const reward = Math.floor(100 * (p.moneyBonus || 1) * (p.eventQuality || 1)); p.stones += reward; GameUI.log(`🎲 <span class="event-positive">【奇遇】发现灵石矿脉！</span> +${reward}灵石`); } },
+                { name: "心魔入侵", type: "negative", effect: function(p) { const loss = Math.floor(p.qi * 0.1 * (p.eventQuality || 1)); p.qi = Math.max(0, p.qi - loss); GameUI.log(`🎲 <span class="event-negative">【厄运】心魔入侵！</span> 修为损失${loss}`); } },
+                { name: "一朝顿悟", type: "positive", effect: function(p) { const bonus = Math.floor(5 * (p.eventQuality || 1)); p.baseSpeed += bonus; GameUI.log(`🎲 <span class="event-positive">【奇遇】一朝顿悟！</span> 修炼速度+${bonus}`); } },
+                { name: "发现天材地宝", type: "positive", effect: function(p) { const maxQi = GameCalculator.getMaxQi(p.realmIndex, p.stageIndex); const boost = Math.floor(maxQi * 0.05 * (p.eventQuality || 1)); p.qi = Math.min(p.qi + boost, maxQi); GameUI.log(`🎲 <span class="event-positive">【奇遇】发现天材地宝！</span> 修为提升${boost}`); } },
+                { name: "被劫修盯上", type: "negative", effect: function(p) { const stoneLoss = Math.floor(p.stones * 0.2 * (p.eventQuality || 1)); const lostStones = Math.min(stoneLoss, Math.floor(p.stones * 0.5)); p.stones -= lostStones; if (Math.random() < 0.5) { const qiLoss = Math.floor(p.qi * 0.05); p.qi = Math.max(0, p.qi - qiLoss); GameUI.log(`🎲 <span class="event-negative">【厄运】被劫修袭击！</span> 损失${lostStones}灵石，修为损失${qiLoss}`); } else { GameUI.log(`🎲 <span class="event-neutral">【厄运】被劫修盯上！</span> 损失${lostStones}灵石，但成功逃脱`); } } },
+                { name: "遇到神秘商人", type: "neutral", effect: function(p) { 
+                    const currentPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                    const realmPill = GameCalculator.getRealmPill(currentPillIds.realmPillId);
+                    if (Math.random() < 0.5) {
+                        p.pillCost = Math.max(10, Math.floor(p.pillCost * 0.8));
+                        GameUI.log(`🎲 <span class="event-positive">【奇遇】遇到神秘商人！</span> ${realmPill.name}成本降至${p.pillCost}灵石`);
+                    } else {
+                        p.pillCost = Math.floor(p.pillCost * 1.2);
+                        GameUI.log(`🎲 <span class="event-neutral">遇到奸商！</span> ${realmPill.name}成本涨至${p.pillCost}灵石`);
+                    }
+                }},
+                { name: "法宝共鸣", type: "positive", effect: function(p) { 
+                    if (GameState.artifactSystem.owned) { 
+                        const artifact = GameState.artifactSystem.owned; 
+                        GameUI.log(`🎲 <span class="event-positive">【法宝奇遇】${artifact.name}产生共鸣！</span> 修复部分退化效果`); 
+                        p.artifactResonance = 30; 
+                    } else { 
+                        GameUI.log(`🎲 <span class="event-neutral">感受到神秘法宝气息，但未能获得</span>`); 
+                    } 
+                }},
+                { name: "寿元波动", type: "neutral", effect: function(p) { const change = Math.floor((Math.random() - 0.5) * 30 * (p.eventQuality || 1)); p.lifespan = Math.max(30, p.lifespan + change); if (change > 0) { GameUI.log(`🎲 <span class="event-positive">【奇遇】服用延寿灵果！</span> 寿元增加${change}天`); } else { GameUI.log(`🎲 <span class="event-negative">【厄运】寿元意外流失！</span> 减少${Math.abs(change)}天`); } } }
+            ]
+        };
+
+        window.GameCalculator = {
+            getMaxQi: function(realmIndex, stageIndex) {
+                const realm = GameConfig.realmSystem[realmIndex];
+                return Math.floor(realm.baseQi * Math.pow(realm.qiMultiplier, stageIndex));
+            },
+            getUpgradeCost: function(player) { return 10 + player.realmIndex * 20 + player.stageIndex * 5; },
+            calculateBreakthroughRate: function(player) { 
+                const baseRate = Math.max(5, 100 - player.stageIndex * 10); 
+                const pillBonus = player.usedRealmPill ? Math.floor(GameCalculator.getRealmPill(player.currentRealmPillId).power * (player.pillPowerMultiplier || 1)) : 0; 
+                const talentBonus = player.breakthroughBonus || 0; 
+                const difficulty = player.breakthroughDifficulty || 1; 
+                const randomBonus = player.breakthroughRandom ? Math.floor(Math.random() * 31) - 15 : 0; 
+                const finalRate = Math.floor((baseRate + pillBonus + talentBonus + randomBonus) * difficulty); 
+                return Math.max(5, Math.min(95, finalRate));
+            },
+            calculateSkillBonus: function(skillSystem, player) { 
+                const baseBonus = skillSystem.learned.reduce(function(sum, skill) { return sum + skill.bonus; }, 0); 
+                const talentMultiplier = player.skillBoost || 1; 
+                const talentPenalty = player.skillPenalty || 1; 
+                const effectPenalty = player.skillEffectPenalty || 1; 
+                return Math.floor(baseBonus * talentMultiplier * talentPenalty * effectPenalty); 
+            },
+            calculateArtifactBonus: function(artifactSystem, player) { 
+                if (!artifactSystem.owned) return 0; 
+                const degradation = Math.max(0.3, 1 - (player.realmIndex - artifactSystem.owned.realmReq) * 0.2); 
+                const talentBoost = player.artifactBoost || 1; 
+                const talentPenalty = player.artifactPenalty || 1; 
+                return Math.floor(artifactSystem.owned.bonus * degradation * talentBoost * talentPenalty); 
+            },
+            getSectBonus: function(sectSystem, type, player) { 
+                if (!sectSystem || !sectSystem.owned) return 0; 
+                const baseBonus = sectSystem.owned.benefit[type] || 0; 
+                const talentBoost = player.sectBonusBoost || 1; 
+                return baseBonus * talentBoost; 
+            },
+            getCurrentPillIds: function(realmIndex) {
+                return GameConfig.pillMapping[realmIndex] || GameConfig.pillMapping[0];
+            },
+            getCultivationPill: function(pillId) {
+                return GameConfig.cultivationPills.find(p => p.id === pillId);
+            },
+            getRealmPill: function(pillId) {
+                return GameConfig.realmPills.find(p => p.id === pillId);
+            }
+        };
+
+        function formatLifespan(days) { 
+            const years = Math.floor(days / 365); 
+            const remainingDays = Math.floor(days % 365); 
+            return years + "年" + remainingDays + "天"; 
+        }
+        
+        function addStageLifespanReward(player, realmIndex) { 
+            let stageReward = 0; 
+            switch(realmIndex) { 
+                case 0: stageReward = Math.floor(Math.random() * 3) + 1; break; 
+                case 1: stageReward = 25; break; 
+                case 2: stageReward = 30; break; 
+                case 3: stageReward = 40; break; 
+                case 4: stageReward = Math.floor(Math.random() * 51) + 50; break; 
+            } 
+            if (stageReward > 0) { 
+                player.maxLifespan += stageReward * 365; 
+                player.lifespan += stageReward * 365; 
+                GameUI.log('<span class="realm-reward">✨ 境界提升！寿元+' + stageReward + '年</span>'); 
+            } 
+        }
+
+        window.GameUI = {
+            isUIInitialized: false, // 新增：防止UI重复初始化
+            
+            initStableUI: function() {
+                // 新增：检查是否已经初始化，防止重复绑定事件
+                if (this.isUIInitialized) {
+                    console.log("【UI】已经初始化完成，跳过重复初始化");
+                    return;
+                }
+                
+                console.log("【UI】开始初始化事件监听器...");
+                document.querySelectorAll('.panel-header').forEach(header => {
+                    header.addEventListener('click', function() {
+                        const panel = this.parentElement;
+                        panel.classList.toggle('collapsed');
+                    });
+                });
+                
+                const buttons = [
+                    { id: "cultivateBtn", action: function() { GameActions.cultivate(); } },
+                    { id: "autoCultivateBtn", action: function() { GameActions.toggleAutoCultivate(); } },
+                    { id: "upgradeBtn", action: function() { GameActions.upgrade(); } },
+                    { id: "breakthroughBtn", action: function() { GameActions.attemptBreakthrough(); } },
+                    { id: "makePillBtn", action: function() { GameActions.makePill(); } },
+                    { id: "useCultivationPillBtn", action: function() { GameActions.useCultivationPill(); } },
+                    { id: "useRealmPillBtn", action: function() { GameActions.useRealmPill(); } },
+                    { id: "pillPanelBtn", action: function() { GameUI.togglePillPanel(); } },
+                    { id: "skillPanelBtn", action: function() { GameUI.toggleSkillPanel(); } },
+                    { id: "artifactPanelBtn", action: function() { GameUI.toggleArtifactPanel(); } },
+                    { id: "sectPanelBtn", action: function() { GameUI.toggleSectPanel(); } },
+                    { id: "relicPanelBtn", action: function() { GameUI.toggleRelicPanel(); } }
+                ];
+                
+                buttons.forEach(btn => {
+                    const element = document.getElementById(btn.id);
+                    if (element) {
+                        // 移除内联onclick，改用addEventListener
+                        element.onclick = null;
+                        element.addEventListener("click", function() { 
+                            console.log(`【按钮】点击：${btn.id}`);
+                            btn.action(); 
+                        }, { once: false }); // 添加once: false确保可以重复点击
+                    } else {
+                        console.error(`【错误】找不到按钮：${btn.id}`);
+                    }
+                });
+                
+                // 新增：绑定保存和加载按钮
+                const saveBtn = document.getElementById('saveBtn');
+                const loadBtn = document.getElementById('loadBtn');
+                if (saveBtn) {
+                    saveBtn.onclick = null;
+                    saveBtn.addEventListener('click', function() { GameActions.saveGame(); });
+                }
+                if (loadBtn) {
+                    loadBtn.onclick = null;
+                    loadBtn.addEventListener('click', function() { GameActions.loadGame(); });
+                }
+                
+                this.isUIInitialized = true; // 标记为已初始化
+                console.log("【UI】事件监听器初始化完成！");
+            },
+            
+            update: function() {
+                const p = GameState.player;
+                if (!p) return;
+                
+                const maxQi = GameCalculator.getMaxQi(p.realmIndex, p.stageIndex);
+                const qiProgress = Math.min(100, Math.floor((p.qi / maxQi) * 100));
+                const skillBonus = GameCalculator.calculateSkillBonus(GameState.skillSystem, p);
+                const artifactBonus = GameCalculator.calculateArtifactBonus(GameState.artifactSystem, p);
+                const sectBonus = GameCalculator.getSectBonus(GameState.sectSystem, "speed", p);
+                let totalSpeed = ((p.baseSpeed || 1) + skillBonus + artifactBonus + sectBonus) * (p.globalBonus || 1) * (p.qiGainBonus || 1);
+                if (p.artifactResonance > 0) totalSpeed *= 1.5;
+                
+                const yearsConsumed = Math.floor((p.maxLifespan - p.lifespan) / 365);
+                const displayAge = p.initialAge + yearsConsumed;
+                
+                const el = function(id) { return document.getElementById(id); };
+                
+                const elements = { 
+                    playerName: el("playerName"), 
+                    playerAge: el("playerAge"), 
+                    playerRealm: el("playerRealm"), 
+                    playerLifespan: el("playerLifespan"), 
+                    fullRealm: el("fullRealm"), 
+                    qi: el("qi"), 
+                    maxQiDisplay: el("maxQiDisplay"), 
+                    totalSpeed: el("totalSpeed"), 
+                    baseSpeed: el("baseSpeed"), 
+                    totalSkillBonus: el("totalSkillBonus"), 
+                    artifactBonusDisplay: el("artifactBonusDisplay"), 
+                    caveBonusDisplay: el("caveBonusDisplay"), 
+                    stonesDisplay: el("stonesDisplay"), 
+                    currentPillName: el("currentPillName"), 
+                    qiBar: el("qiBar"), 
+                    qiProgressText: el("qiProgressText"), 
+                    skillCount: el("skillCount"), 
+                    artifactStatus: el("artifactStatus"), 
+                    sectStatus: el("sectStatus"), 
+                    tribulationWarning: el("tribulationWarning"),
+                    cultivationPillsDisplay: el("cultivationPillsDisplay"),
+                    realmPillsDisplay: el("realmPillsDisplay")
+                };
+                
+                if (elements.playerName) elements.playerName.textContent = p.name || "无名氏";
+                if (elements.playerAge) elements.playerAge.textContent = displayAge + "岁";
+                if (elements.playerRealm) elements.playerRealm.textContent = GameConfig.realmSystem[p.realmIndex].name + " " + GameConfig.realmSystem[p.realmIndex].stages[p.stageIndex];
+                if (elements.playerLifespan) elements.playerLifespan.textContent = formatLifespan(p.lifespan);
+                if (elements.fullRealm) elements.fullRealm.textContent = GameConfig.realmSystem[p.realmIndex].name + " " + GameConfig.realmSystem[p.realmIndex].stages[p.stageIndex];
+                if (elements.qi) elements.qi.textContent = Math.floor(p.qi);
+                if (elements.maxQiDisplay) elements.maxQiDisplay.textContent = maxQi.toLocaleString();
+                if (elements.totalSpeed) elements.totalSpeed.textContent = totalSpeed.toFixed(1);
+                if (elements.baseSpeed) elements.baseSpeed.textContent = (p.baseSpeed || 1).toFixed(1);
+                if (elements.totalSkillBonus) elements.totalSkillBonus.textContent = skillBonus;
+                if (elements.artifactBonusDisplay) elements.artifactBonusDisplay.textContent = artifactBonus;
+                if (elements.caveBonusDisplay) elements.caveBonusDisplay.textContent = sectBonus;
+                if (elements.stonesDisplay) elements.stonesDisplay.textContent = p.stones.toLocaleString();
+                if (elements.cultivationPillsDisplay) elements.cultivationPillsDisplay.textContent = p.cultivationPills + " 颗";
+                if (elements.realmPillsDisplay) elements.realmPillsDisplay.textContent = p.realmPills + " 颗";
+                
+                const currentPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                if (elements.currentPillName) {
+                    elements.currentPillName.textContent = currentPillIds.realmPillName;
+                }
+                
+                if (elements.qiBar) elements.qiBar.style.width = qiProgress + "%";
+                if (elements.qiProgressText) elements.qiProgressText.textContent = qiProgress + "%";
+                if (elements.skillCount) elements.skillCount.textContent = GameState.skillSystem.learned.length;
+                if (elements.artifactStatus) elements.artifactStatus.textContent = GameState.artifactSystem.owned ? GameState.artifactSystem.owned.name : '未装备';
+                if (elements.sectStatus) elements.sectStatus.textContent = GameState.sectSystem.owned ? GameState.sectSystem.owned.name : '未加入';
+                
+                const talentContent = document.getElementById("talentContent");
+                if (talentContent && GameState.talentSystem) {
+                    let talentHTML = '';
+                    GameState.talentSystem.forEach(function(talent) { 
+                        const className = 'talent-' + talent.type; 
+                        talentHTML += '<div class="stat-row"><span class="stat-label ' + className + '">' + talent.name + '</span><span class="stat-value ' + className + '">' + talent.desc + '</span></div>'; 
+                    });
+                    talentContent.innerHTML = talentHTML;
+                }
+                
+                const specialContent = [];
+                if (GameState.skillSystem.learned.length > 0) specialContent.push('<div class="stat-row"><span class="stat-label">功法</span><span class="stat-value">已学习 ' + GameState.skillSystem.learned.length + ' 本</span></div>');
+                if (GameState.artifactSystem.owned) specialContent.push('<div class="stat-row"><span class="stat-label">法宝</span><span class="stat-value artifact-name">' + GameState.artifactSystem.owned.name + '</span></div>');
+                if (GameState.sectSystem.owned) specialContent.push('<div class="stat-row"><span class="stat-label">宗门</span><span class="stat-value sect-name">' + GameState.sectSystem.owned.name + '</span></div>');
+                if (p.artifactResonance > 0) specialContent.push('<div class="stat-row"><span class="stat-label">法宝共鸣</span><span class="stat-value event-positive">' + p.artifactResonance + '秒</span></div>');
+                
+                const specialStatusContent = document.getElementById("specialStatusContent");
+                if (specialStatusContent) specialStatusContent.innerHTML = specialContent.join('');
+                
+                if (elements.tribulationWarning) {
+                    const daysSinceLast = p.time - (p.lastTribulation || 0);
+                    elements.tribulationWarning.style.display = (p.realmIndex >= 2 && daysSinceLast >= 80) ? "block" : "none";
+                }
+                
+                const breakthroughBtn = document.getElementById("breakthroughBtn");
+                const successRateContainer = document.getElementById("successRateContainer");
+                const successRate = document.getElementById("successRate");
+                const pillBonus = document.getElementById("pillBonus");
+                
+                if (p.qi >= maxQi) {
+                    if (breakthroughBtn) breakthroughBtn.style.display = "inline-block";
+                    if (successRateContainer) successRateContainer.style.display = "block";
+                    const rate = GameCalculator.calculateBreakthroughRate(p);
+                    if (successRate) successRate.textContent = rate + "%";
+                    if (pillBonus) pillBonus.innerHTML = p.usedRealmPill ? '<span style="color:#4CAF50;"> (境界丹+' + Math.floor(GameCalculator.getRealmPill(p.currentRealmPillId).power * (p.pillPowerMultiplier || 1)) + '%)</span>' : '';
+                } else {
+                    if (breakthroughBtn) breakthroughBtn.style.display = "none";
+                    if (successRateContainer) successRateContainer.style.display = "none";
+                }
+                
+                const useCultivationPillBtn = document.getElementById("useCultivationPillBtn");
+                const useRealmPillBtn = document.getElementById("useRealmPillBtn");
+                
+                if (useCultivationPillBtn) {
+                    const cultivationPill = GameCalculator.getCultivationPill(currentPillIds.cultivationPillId);
+                    useCultivationPillBtn.style.display = (p.cultivationPills > 0 && cultivationPill) ? "inline-block" : "none";
+                    if (cultivationPill) {
+                        useCultivationPillBtn.textContent = `💊 使用${cultivationPill.name} (+${cultivationPill.power}修为)`;
+                    }
+                }
+                
+                if (useRealmPillBtn) {
+                    const realmPill = GameCalculator.getRealmPill(currentPillIds.realmPillId);
+                    useRealmPillBtn.style.display = (p.realmPills > 0 && realmPill && !p.usedRealmPill && !p.noPills) ? "inline-block" : "none";
+                    if (realmPill) {
+                        useRealmPillBtn.textContent = `🌟 使用${realmPill.name} (+${realmPill.power}%成功率)`;
+                    }
+                }
+                
+                const makePillBtn = document.getElementById("makePillBtn");
+                if (makePillBtn && currentPillIds.realmPillId) {
+                    const realmPill = GameCalculator.getRealmPill(currentPillIds.realmPillId);
+                    if (realmPill) {
+                        makePillBtn.textContent = `⚗️ 炼制${realmPill.name}`;
+                    }
+                }
+            },
+            
+            toggleSkillPanel: function() {
+                const panel = document.getElementById("skillPanel");
+                if (!panel) return;
+                const isVisible = panel.style.display === "block";
+                panel.style.display = isVisible ? "none" : "block";
+                if (!isVisible) GameUI.generateSkillPanelContent();
+            },
+            
+            toggleArtifactPanel: function() {
+                const panel = document.getElementById("artifactPanel");
+                if (!panel) return;
+                const isVisible = panel.style.display === "block";
+                panel.style.display = isVisible ? "none" : "block";
+                if (!isVisible) GameUI.generateArtifactPanelContent();
+            },
+            
+            toggleSectPanel: function() {
+                const panel = document.getElementById("sectPanel");
+                if (!panel) return;
+                const isVisible = panel.style.display === "block";
+                panel.style.display = isVisible ? "none" : "block";
+                if (!isVisible) GameUI.generateSectPanelContent();
+            },
+            
+            toggleRelicPanel: function() {
+                const panel = document.getElementById("relicPanel");
+                if (!panel) return;
+                const isVisible = panel.style.display === "block";
+                panel.style.display = isVisible ? "none" : "block";
+                if (!isVisible) GameUI.generateRelicPanelContent();
+            },
+            
+            togglePillPanel: function() {
+                const panel = document.getElementById("pillPanel");
+                if (!panel) return;
+                const isVisible = panel.style.display === "block";
+                panel.style.display = isVisible ? "none" : "block";
+                if (!isVisible) GameUI.generatePillPanelContent();
+            },
+            
+            generateSkillPanelContent: function() {
+                const content = document.getElementById("skillPanelContent");
+                if (!content) return;
+                const p = GameState.player;
+                let html = '<div class="panel-section"><h3>可学习功法</h3>';
+                GameConfig.skills.forEach(function(skill) {
+                    const isLearned = GameState.skillSystem.learned.some(function(s) { return s.id === skill.id; });
+                    const canLearn = p.realmIndex >= skill.realmReq;
+                    let cost = skill.cost;
+                    if (p.skillCostDiscount) cost = Math.floor(cost * p.skillCostDiscount);
+                    if (p.priceIncrease) cost = Math.floor(cost * p.priceIncrease);
+                    html += '<div style="margin:15px 0; padding:10px; border:1px solid #333; border-radius:5px;"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;"><div style="text-align:left; flex: 1; min-width: 200px;"><span style="font-weight:bold;">' + skill.name + '</span><div style="font-size: var(--font-size-sm); color: #aaa; margin-top: 3px;">' + skill.desc + '</div><div style="font-size: var(--font-size-sm);">加成: +' + skill.bonus + ' 速度</div></div>' + (isLearned ? '<span style="color:#4CAF50; font-weight:bold;">已学习</span>' : (!canLearn ? '<span style="color:#888; font-size: var(--font-size-sm);">需要' + GameConfig.realmSystem[skill.realmReq].name + '</span>' : '<button onclick="GameActions.learnSkill(\'' + skill.id + '\')" class="btn-primary" style="min-width:80px; padding:8px; font-size: var(--font-size-sm);">' + cost + ' 灵石</button>')) + '</div></div>';
+                });
+                html += '</div><div class="panel-section"><h3>当前加成</h3><div class="stat-row"><span class="stat-label">功法总加成</span><span class="stat-value skill-effective">+' + GameCalculator.calculateSkillBonus(GameState.skillSystem, p) + ' 速度</span></div></div>';
+                content.innerHTML = html;
+            },
+            
+            generateArtifactPanelContent: function() {
+                const content = document.getElementById("artifactPanelContent");
+                if (!content) return;
+                const p = GameState.player;
+                let html = '<div class="panel-section"><h3>可获得法宝</h3>';
+                GameConfig.artifacts.forEach(function(artifact) {
+                    const isOwned = GameState.artifactSystem.owned && GameState.artifactSystem.owned.id === artifact.id;
+                    const canEquip = p.realmIndex >= artifact.realmReq;
+                    let cost = artifact.cost;
+                    if (p.priceIncrease) cost = Math.floor(cost * p.priceIncrease);
+                    html += '<div style="margin:15px 0; padding:10px; border:1px solid #333; border-radius:5px;"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;"><div style="text-align:left; flex: 1; min-width: 200px;"><span class="artifact-name" style="font-weight:bold;">' + artifact.name + '</span><div style="font-size: var(--font-size-sm); color: #aaa; margin-top: 3px;">' + artifact.desc + '</div><div style="font-size: var(--font-size-sm);">加成: +' + artifact.bonus + ' 速度</div></div>' + (isOwned ? '<span style="color:#4CAF50; font-weight:bold;">已装备</span>' : (!canEquip ? '<span style="color:#888; font-size: var(--font-size-sm);">需要' + GameConfig.realmSystem[artifact.realmReq].name + '</span>' : '<button onclick="GameActions.obtainArtifact(\'' + artifact.id + '\')" class="btn-primary" style="min-width:80px; padding:8px; font-size: var(--font-size-sm);">' + cost + ' 灵石</button>')) + '</div></div>';
+                });
+                html += '</div><div class="panel-section"><h3>当前装备</h3>';
+                if (GameState.artifactSystem.owned) {
+                    const artifact = GameState.artifactSystem.owned;
+                    const currentBonus = GameCalculator.calculateArtifactBonus(GameState.artifactSystem, p);
+                    html += '<div class="stat-row"><span class="stat-label">装备法宝</span><span class="stat-value artifact-name">' + artifact.name + '</span></div><div class="stat-row"><span class="stat-label">当前加成</span><span class="stat-value">+' + currentBonus + ' 速度</span></div>';
+                } else {
+                    html += '<div style="color:#888;">尚未装备任何法宝</div>';
+                }
+                html += '</div>';
+                content.innerHTML = html;
+            },
+            
+            generateSectPanelContent: function() {
+                const content = document.getElementById("sectPanelContent");
+                if (!content) return;
+                const p = GameState.player;
+                let html = '<div class="panel-section"><h3>可加入宗门</h3>';
+                if (p.cantJoinSect) {
+                    html += '<div style="color:#f44336; padding:10px;">天赋限制：无法加入任何宗门</div>';
+                } else {
+                    GameConfig.sects.forEach(function(sect) {
+                        const isJoined = GameState.sectSystem.owned && GameState.sectSystem.owned.id === sect.id;
+                        const canJoin = p.realmIndex >= sect.realmReq;
+                        let cost = sect.joinCost;
+                        if (p.priceIncrease) cost = Math.floor(cost * p.priceIncrease);
+                        html += '<div style="margin:15px 0; padding:10px; border:1px solid #333; border-radius:5px;"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;"><div style="text-align:left; flex: 1; min-width: 200px;"><span class="sect-name" style="font-weight:bold;">' + sect.name + '</span><div style="font-size: var(--font-size-sm); color: #aaa; margin-top: 3px;">' + sect.desc + '</div><div style="font-size: var(--font-size-sm);">加成: +' + sect.benefit.speed + ' 速度</div></div>' + (isJoined ? '<span style="color:#4CAF50; font-weight:bold;">已加入</span>' : (!canJoin ? '<span style="color:#888; font-size: var(--font-size-sm);">需要' + GameConfig.realmSystem[sect.realmReq].name + '</span>' : '<button onclick="GameActions.joinSect(\'' + sect.id + '\')" class="btn-primary" style="min-width:80px; padding:8px; font-size: var(--font-size-sm);">' + cost + ' 灵石</button>')) + '</div></div>';
+                    });
+                }
+                html += '</div><div class="panel-section"><h3>当前宗门</h3>';
+                if (GameState.sectSystem.owned) {
+                    const sect = GameState.sectSystem.owned;
+                    html += '<div class="stat-row"><span class="stat-label">所属宗门</span><span class="stat-value sect-name">' + sect.name + '</span></div><div class="stat-row"><span class="stat-label">宗门加成</span><span class="stat-value">+' + sect.benefit.speed + ' 速度</span></div><div class="stat-row"><span class="stat-label">宗门贡献</span><span class="stat-value sect-contribution">' + GameState.sectSystem.contribution + '</span></div>';
+                } else {
+                    html += '<div style="color:#888;">尚未加入任何宗门</div>';
+                }
+                html += '</div>';
+                content.innerHTML = html;
+            },
+            
+            generateRelicPanelContent: function() {
+                const content = document.getElementById("relicPanelContent");
+                if (!content) return;
+                const p = GameState.player;
+                let html = '<div class="panel-section"><h3>可探索遗迹</h3>';
+                GameConfig.relics.forEach(function(relic) {
+                    const thiefExtra = p.thiefBonus ? ' (+20-50灵石)' : '';
+                    const cost = relic.cost + (p.thiefBonus ? 2 : 0);
+                    html += '<div style="margin:15px 0; padding:10px; border:1px solid #333; border-radius:5px;"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;"><div style="text-align:left; flex: 1; min-width: 200px;"><span class="relic-name" style="font-weight:bold;">' + relic.name + '</span><div style="font-size: var(--font-size-sm); color: #aaa; margin-top: 3px;">' + relic.desc + '</div><div style="font-size: var(--font-size-sm);">消耗: ' + cost + ' 年寿元</div><div style="font-size: var(--font-size-sm);">奖励: ' + relic.minReward + '-' + relic.maxReward + ' 灵石' + thiefExtra + '</div>' + (p.thiefBonus ? '<div style="font-size: var(--font-size-sm); color:#FFC107;">额外：盗贼天赋附加奖励</div>' : '') + '</div><button onclick="GameActions.exploreRelic(\'' + relic.id + '\')" class="btn-primary" style="min-width:80px; padding:8px; font-size: var(--font-size-sm);">探索</button></div>';
+                });
+                html += '</div><div class="panel-section"><h3>探索说明</h3><div style="color:#aaa; font-size: var(--font-size-sm);">探索遗迹会消耗寿元，但可获得大量灵石。寿元随时间流逝（每秒减少1天），请合理分配。</div></div>';
+                content.innerHTML = html;
+            },
+            
+            generatePillPanelContent: function() {
+                const content = document.getElementById("pillPanelContent");
+                if (!content) return;
+                
+                const p = GameState.player;
+                let html = '';
+                
+                html += '<div class="current-pill-info">';
+                html += '<div class="current-pill-title">当前境界丹药配置</div>';
+                
+                const currentPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                const cultivationPill = GameCalculator.getCultivationPill(currentPillIds.cultivationPillId);
+                const realmPill = GameCalculator.getRealmPill(currentPillIds.realmPillId);
+                
+                html += '<div class="stat-row"><span class="stat-label">修为丹</span><span class="stat-value">'+ (cultivationPill ? cultivationPill.name : '无') +'</span></div>';
+                html += '<div class="stat-row"><span class="stat-label">境界丹</span><span class="stat-value">'+ (realmPill ? realmPill.name : '无') +'</span></div>';
+                html += '</div>';
+                
+                html += '<div class="pill-type-section">';
+                html += '<div class="pill-type-title pill-type-cultivation">💊 修为丹（直接增加修为）</div>';
+                GameConfig.cultivationPills.forEach(function(pill) {
+                    const canUse = p.realmIndex >= pill.minRealm;
+                    const inventory = GameState.pillSystem.cultivationPills[pill.id] || 0;
+                    
+                    html += '<div class="pill-item">';
+                    html += '<div class="pill-name">'+ pill.name +'</div>';
+                    html += '<div class="pill-desc">'+ pill.desc +'</div>';
+                    html += '<div class="pill-stats">';
+                    html += '<div class="stat-item"><span>境界要求:</span><span>'+ (pill.minRealm === 0 ? '炼气期' : GameConfig.realmSystem[pill.minRealm].name) +'</span></div>';
+                    html += '<div class="stat-item"><span>增加修为:</span><span class="event-positive">+'+ pill.power +'</span></div>';
+                    html += '<div class="stat-item"><span>炼制成本:</span><span class="cost-highlight">'+ pill.cost +'灵石</span></div>';
+                    html += '<div class="stat-item"><span>当前库存:</span><span class="pill-name">'+ inventory +'颗</span></div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                
+                html += '<div class="pill-type-section">';
+                html += '<div class="pill-type-title pill-type-realm">🌟 境界丹（提升突破成功率）</div>';
+                GameConfig.realmPills.forEach(function(pill) {
+                    const inventory = GameState.pillSystem.realmPills[pill.id] || 0;
+                    
+                    html += '<div class="pill-item">';
+                    html += '<div class="pill-name">'+ pill.name +'</div>';
+                    html += '<div class="pill-desc">'+ pill.desc +'</div>';
+                    html += '<div class="pill-stats">';
+                    html += '<div class="stat-item"><span>适用境界:</span><span>'+ GameConfig.realmSystem[pill.minRealm].name +' - '+ GameConfig.realmSystem[pill.maxRealm].name +'</span></div>';
+                    html += '<div class="stat-item"><span>成功率加成:</span><span class="event-positive">+'+ pill.power +'%</span></div>';
+                    html += '<div class="stat-item"><span>炼制成本:</span><span class="cost-highlight">'+ pill.cost +'灵石</span></div>';
+                    html += '<div class="stat-item"><span>当前库存:</span><span class="pill-name">'+ inventory +'颗</span></div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                
+                content.innerHTML = html;
+            },
+            
+            log: function(message) {
+                const logElement = document.getElementById("log");
+                if (!logElement) return;
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement("div");
+                logEntry.innerHTML = '[' + timestamp + '] ' + message;
+                const existingLogs = Array.from(logElement.children);
+                if (existingLogs.length >= 20) {
+                    for (let i = 0; i < existingLogs.length - 19; i++) {
+                        logElement.removeChild(existingLogs[i]);
+                    }
+                }
+                logElement.appendChild(logEntry);
+                logElement.scrollTop = logElement.scrollHeight;
+                debugLog("日志:", message);
+            }
+        };
+
+        window.GameActions = {
+            cultivate: function() {
+                const p = GameState.player;
+                if (!p) return;
+                const skillBonus = GameCalculator.calculateSkillBonus(GameState.skillSystem, p);
+                const artifactBonus = GameCalculator.calculateArtifactBonus(GameState.artifactSystem, p);
+                const sectBonus = GameCalculator.getSectBonus(GameState.sectSystem, "speed", p);
+                let totalSpeed = ((p.baseSpeed || 1) + skillBonus + artifactBonus + sectBonus) * (p.globalBonus || 1) * (p.qiGainBonus || 1);
+                if (p.artifactResonance > 0) totalSpeed *= 1.5;
+                if (p.manualCultivateBonus) totalSpeed *= p.manualCultivateBonus;
+                if (p.manualCultivatePenalty) totalSpeed *= p.manualCultivatePenalty;
+                const oldQi = p.qi;
+                p.qi += totalSpeed;
+                GameUI.log('🧘 修炼 +' + (p.qi - oldQi).toFixed(1));
+                GameUI.update();
+            },
+            
+            toggleAutoCultivate: function() {
+                const btn = document.getElementById("autoCultivateBtn");
+                if (!btn) return;
+                GameState.autoCultivating = !GameState.autoCultivating;
+                btn.textContent = GameState.autoCultivating ? "🤖 关闭自动修炼" : "🤖 开启自动修炼";
+                btn.style.background = GameState.autoCultivating ? "linear-gradient(135deg, #FF5722, #FF9800)" : "linear-gradient(135deg, #0f3460, #1e5a8c)";
+                GameUI.log(GameState.autoCultivating ? "🤖 自动修炼已开启" : "🤖 自动修炼已关闭");
+            },
+            
+            upgrade: function() {
+                const p = GameState.player;
+                let cost = GameCalculator.getUpgradeCost(p);
+                cost = Math.floor(cost * (p.priceIncrease || 1));
+                if (p.stones >= cost) { p.stones -= cost; p.baseSpeed = (p.baseSpeed || 1) + 0.5; GameUI.log('📈 资质提升！基础修炼速度 +0.5'); GameUI.update(); } else { GameUI.log('⚠️ 灵石不足，需要 ' + cost + ' 灵石'); }
+            },
+            
+            makePill: function() {
+                const p = GameState.player;
+                const pillSystem = GameState.pillSystem;
+                if (p.noPills) { GameUI.log('⚠️ 苦修者天赋：无法使用丹药'); return; }
+                
+                const currentPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                const realmPill = GameCalculator.getRealmPill(currentPillIds.realmPillId);
+                
+                if (!realmPill) {
+                    GameUI.log('❌ 当前境界无可用丹药！');
+                    return;
+                }
+                
+                let cost = p.pillCost || realmPill.cost;
+                cost = Math.floor(cost * (p.priceIncrease || 1));
+                if (p.stones >= cost) {
+                    p.stones -= cost;
+                    
+                    if (!pillSystem.realmPills[currentPillIds.realmPillId]) {
+                        pillSystem.realmPills[currentPillIds.realmPillId] = 0;
+                    }
+                    pillSystem.realmPills[currentPillIds.realmPillId] += 1;
+                    p.realmPills += 1;
+                    
+                    p.pillCost = Math.floor((p.pillCost || realmPill.cost) * 1.5);
+                    
+                    GameUI.log('⚗️ 成功炼制 ' + realmPill.name + ' x1 → 下次成本：' + p.pillCost + '灵石');
+                } else {
+                    GameUI.log('⚠️ 灵石不足，需要 ' + cost + ' 灵石');
+                }
+                GameUI.update();
+            },
+            
+            useCultivationPill: function() {
+                const p = GameState.player;
+                const pillSystem = GameState.pillSystem;
+                if (p.noPills) { GameUI.log('⚠️ 苦修者天赋：无法使用丹药'); return; }
+                
+                const currentPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                const cultivationPill = GameCalculator.getCultivationPill(currentPillIds.cultivationPillId);
+                
+                if (!cultivationPill) {
+                    GameUI.log('❌ 当前境界无可用修为丹！');
+                    return;
+                }
+                
+                if (p.cultivationPills > 0 && pillSystem.cultivationPills[currentPillIds.cultivationPillId] > 0) {
+                    const oldQi = p.qi;
+                    p.qi = Math.min(p.qi + cultivationPill.power, GameCalculator.getMaxQi(p.realmIndex, p.stageIndex));
+                    const gained = p.qi - oldQi;
+                    
+                    pillSystem.cultivationPills[currentPillIds.cultivationPillId] -= 1;
+                    p.cultivationPills -= 1;
+                    
+                    GameUI.log('💊 使用' + cultivationPill.name + '，修为提升' + gained.toFixed(0));
+                    GameUI.update();
+                }
+            },
+            
+            useRealmPill: function() {
+                const p = GameState.player;
+                if (p.noPills) { GameUI.log('⚠️ 苦修者天赋：无法使用丹药'); return; }
+                
+                const currentPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                const realmPill = GameCalculator.getRealmPill(currentPillIds.realmPillId);
+                
+                if (!realmPill) {
+                    GameUI.log('❌ 当前境界无可用境界丹！');
+                    return;
+                }
+                
+                if (p.realmPills > 0 && !p.usedRealmPill) {
+                    p.usedRealmPill = true;
+                    GameUI.log('💊 服用' + realmPill.name + '，突破成功率 +' + Math.floor(realmPill.power * (p.pillPowerMultiplier || 1)) + '%');
+                    GameUI.update();
+                } else {
+                    GameUI.log('⚠️ 境界丹数量不足或已使用');
+                }
+            },
+            
+            attemptBreakthrough: function() {
+                const p = GameState.player;
+                if (!p) return;
+                const maxQi = GameCalculator.getMaxQi(p.realmIndex, p.stageIndex);
+                if (p.qi < maxQi) { GameUI.log("⚠️ 修为不足，无法突破"); return; }
+                const successRate = GameCalculator.calculateBreakthroughRate(p);
+                GameUI.log('🔥 开始突破... 成功率: ' + successRate + '%');
+                if (Math.random() * 100 < successRate) {
+                    p.stageIndex++;
+                    const realm = GameConfig.realmSystem[p.realmIndex];
+                    if (p.stageIndex >= realm.stages.length) {
+                        if (p.realmIndex < GameConfig.realmSystem.length - 1) {
+                            p.realmIndex++; p.stageIndex = 0;
+                            GameUI.log('🎉 <span class="realm-reward">【大境界突破】</span> 成功进入' + GameConfig.realmSystem[p.realmIndex].name + '！');
+                            const lifespanReward = [0, 50, 80, 120, 200][p.realmIndex] || 0;
+                            if (lifespanReward > 0) { p.maxLifespan += lifespanReward * 365; p.lifespan += lifespanReward * 365; GameUI.log('✨ <span class="realm-reward">寿元增加' + lifespanReward + '年！</span>'); }
+                            if (p.realmIndex < 4) { 
+                                const newPillIds = GameCalculator.getCurrentPillIds(p.realmIndex);
+                                p.currentRealmPillId = newPillIds.realmPillId;
+                            }
+                        } else { 
+                            p.stageIndex = realm.stages.length - 1; 
+                            GameUI.log('🎉 <span class="realm-reward">【境界圆满】</span> 你已站在修仙界巅峰！'); 
+                        }
+                    } else {
+                        GameUI.log('🎉 <span class="realm-reward">【小境界突破】</span> 成功突破到' + realm.stages[p.stageIndex] + '！');
+                        addStageLifespanReward(p, p.realmIndex);
+                    }
+                    
+                    if (p.usedRealmPill && p.currentRealmPillId) {
+                        GameState.pillSystem.realmPills[p.currentRealmPillId] = Math.max(0, (GameState.pillSystem.realmPills[p.currentRealmPillId] || 0) - 1);
+                        p.realmPills = Math.max(0, p.realmPills - 1);
+                    }
+                    
+                    p.qi = 0; 
+                    p.usedRealmPill = false; 
+                    p.breakthroughDifficulty = 1;
+                    if (p.phoenixBlessing) { p.lifespan = Math.min(p.lifespan + 30, p.maxLifespan); GameUI.log('🔥 凤凰血脉触发！寿元恢复30天'); }
+                } else {
+                    const qiLoss = Math.floor(maxQi * 0.3);
+                    p.qi = Math.max(0, p.qi - qiLoss);
+                    p.usedRealmPill = false;
+                    p.breakthroughDifficulty = (p.breakthroughDifficulty || 1) + 0.2;
+                    GameUI.log('💔 <span class="event-negative">【突破失败】</span> 修为损失' + qiLoss + '！');
+                }
+                GameUI.update();
+            },
+            
+            learnSkill: function(skillId) {
+                const p = GameState.player;
+                const skill = GameConfig.skills.find(function(s) { return s.id === skillId; });
+                if (!skill) return;
+                let cost = skill.cost;
+                if (p.skillCostDiscount) cost = Math.floor(cost * p.skillCostDiscount);
+                if (p.priceIncrease) cost = Math.floor(cost * p.priceIncrease);
+                if (p.stones >= cost) { p.stones -= cost; GameState.skillSystem.learned.push(skill); GameUI.log('📜 学会新功法: ' + skill.name + '！'); GameUI.update(); } else { GameUI.log('⚠️ 灵石不足，需要 ' + cost + ' 灵石'); }
+            },
+            
+            obtainArtifact: function(artifactId) {
+                const p = GameState.player;
+                const artifact = GameConfig.artifacts.find(function(a) { return a.id === artifactId; });
+                if (!artifact) return;
+                let cost = artifact.cost;
+                if (p.priceIncrease) cost = Math.floor(cost * p.priceIncrease);
+                if (p.stones >= cost) { p.stones -= cost; GameState.artifactSystem.owned = artifact; GameUI.log('🗡️ 获得法宝: ' + artifact.name + '！'); GameUI.update(); } else { GameUI.log('⚠️ 灵石不足，需要 ' + cost + ' 灵石'); }
+            },
+            
+            joinSect: function(sectId) {
+                const p = GameState.player;
+                const sect = GameConfig.sects.find(function(s) { return s.id === sectId; });
+                if (!sect) return;
+                if (p.cantJoinSect) { GameUI.log('⚠️ 天赋限制：无法加入宗门'); return; }
+                let cost = sect.joinCost;
+                if (p.priceIncrease) cost = Math.floor(cost * p.priceIncrease);
+                if (p.stones >= cost) { p.stones -= cost; GameState.sectSystem.owned = sect; GameState.sectSystem.contribution = 0; GameUI.log('🏛️ 成功加入宗门: ' + sect.name + '！'); GameUI.update(); } else { GameUI.log('⚠️ 灵石不足，需要 ' + cost + ' 灵石'); }
+            },
+            
+            exploreRelic: function(relicId) {
+                const p = GameState.player;
+                const relic = GameConfig.relics.find(function(r) { return r.id === relicId; });
+                if (!relic) return;
+                const cost = relic.cost + (p.thiefBonus ? 2 : 0);
+                if (p.lifespan < cost * 365) { GameUI.log('⚠️ 寿元不足，需要 ' + cost + ' 年寿元'); return; }
+                p.lifespan -= cost * 365;
+                const baseReward = Math.floor(Math.random() * (relic.maxReward - relic.minReward + 1)) + relic.minReward;
+                const thiefBonus = p.thiefBonus ? Math.floor(Math.random() * 31) + 20 : 0;
+                const totalReward = Math.floor((baseReward + thiefBonus) * (p.moneyBonus || 1));
+                p.stones += totalReward;
+                GameUI.log('🏛️ <span class="event-positive">探索' + relic.name + '成功！</span> 获得 ' + totalReward + ' 灵石 (消耗' + cost + '年寿元)');
+                if (thiefBonus > 0) GameUI.log('💰 盗贼天赋额外获得 ' + thiefBonus + ' 灵石！');
+                GameUI.update();
+            },
+            
+            triggerRandomEvent: function() {
+                const p = GameState.player;
+                const events = GameConfig.randomEvents;
+                const quality = p.luck >= 2 ? 1.5 : 1;
+                p.eventQuality = quality;
+                const randomIndex = Math.floor(Math.random() * events.length);
+                const event = events[randomIndex];
+                event.effect(p);
+                debugLog("触发随机事件:", event.name);
+            },
+            
+            triggerTribulation: function() {
+                const p = GameState.player;
+                p.lastTribulation = p.time;
+                const tribulationPower = p.realmIndex * 0.3;
+                const successRate = Math.max(10, 80 - tribulationPower * 20);
+                GameUI.log('⚡ <span class="tribulation-warning">【天劫降临】</span> 威力等级：' + (p.realmIndex + 1));
+                if (Math.random() * 100 < successRate) {
+                    const reward = Math.floor(p.maxLifespan * 0.1);
+                    p.maxLifespan += reward;
+                    p.lifespan = Math.min(p.lifespan + reward, p.maxLifespan);
+                    GameUI.log('🎉 <span class="event-positive">【渡劫成功】</span> 寿元增加' + Math.floor(reward/365) + '年！');
+                } else {
+                    const penalty = Math.floor(p.maxLifespan * 0.05);
+                    p.maxLifespan = Math.max(365, p.maxLifespan - penalty);
+                    p.lifespan = Math.min(p.lifespan, p.maxLifespan);
+                    GameUI.log('💀 <span class="event-negative">【渡劫失败】</span> 寿元减少' + Math.floor(penalty/365) + '年！');
+                }
+            },
+            
+            saveGame: function() {
+                const saveData = { 
+                    player: GameState.player, 
+                    skillSystem: GameState.skillSystem, 
+                    artifactSystem: GameState.artifactSystem, 
+                    sectSystem: GameState.sectSystem, 
+                    talentSystem: GameState.talentSystem,
+                    pillSystem: GameState.pillSystem,
+                    version: "v1.5-丹药重构版" 
+                };
+                localStorage.setItem("immortalCultivatorSave", JSON.stringify(saveData));
+                GameUI.log("💾 游戏已保存");
+                const status = document.getElementById("saveStatus");
+                if (status) { status.textContent = "已保存"; status.style.color = "#4CAF50"; setTimeout(function() { status.textContent = ""; }, 2000); }
+            },
+            
+            loadGame: function() {
+                const saved = localStorage.getItem("immortalCultivatorSave");
+                if (!saved) { GameUI.log("⚠️ 没有找到存档"); return; }
+                try {
+                    const saveData = JSON.parse(saved);
+                    GameState.player = saveData.player;
+                    GameState.skillSystem = saveData.skillSystem || { learned: [] };
+                    GameState.artifactSystem = saveData.artifactSystem || { owned: null };
+                    GameState.sectSystem = saveData.sectSystem || { owned: null, contribution: 0 };
+                    GameState.talentSystem = saveData.talentSystem || [];
+                    GameState.pillSystem = saveData.pillSystem || { cultivationPills: {}, realmPills: {} };
+                    
+                    GameConfig.cultivationPills.forEach(pill => {
+                        if (GameState.pillSystem.cultivationPills[pill.id] === undefined) {
+                            GameState.pillSystem.cultivationPills[pill.id] = 0;
+                        }
+                    });
+                    GameConfig.realmPills.forEach(pill => {
+                        if (GameState.pillSystem.realmPills[pill.id] === undefined) {
+                            GameState.pillSystem.realmPills[pill.id] = 0;
+                        }
+                    });
+                    
+                    if (GameState.player && GameCalculator.getRealmPill(GameState.player.currentRealmPillId)) {
+                        GameState.player.pillCost = GameState.player.pillCost || GameCalculator.getRealmPill(GameState.player.currentRealmPillId).cost;
+                    }
+                    GameUI.log("📂 游戏已读取");
+                    GameUI.update();
+                } catch (e) {
+                    GameUI.log("⚠️ 存档损坏，无法读取");
+                    console.error(e);
+                }
+            }
+        };
+
+        window.GameLoop = {
+            update: function() {
+                const p = GameState.player;
+                if (!p) return;
+                p.time++;
+                p.lifespan--;
+                if (p.lifespan <= 0) {
+                    GameUI.log("💀 寿元耗尽，你陨落了...");
+                    clearInterval(GameState.gameLoop);
+                    GameState.gameLoop = null;
+                    return;
+                }
+                if (GameState.autoCultivating) {
+                    GameActions.cultivate();
+                    GameState.autoCultivateLogTimer++;
+                    if (GameState.autoCultivateLogTimer >= 10) GameState.autoCultivateLogTimer = 0;
+                }
+                if (p.artifactResonance > 0) p.artifactResonance--;
+                const eventChance = 0.01 * (p.luck || 1);
+                if (Math.random() < eventChance) GameActions.triggerRandomEvent();
+                if (p.realmIndex >= 2) {
+                    const daysSinceLast = p.time - (p.lastTribulation || 0);
+                    if (daysSinceLast >= 90) GameActions.triggerTribulation();
+                }
+                GameUI.update();
+            }
+        };
+
+        window.startGame = function() {
+            // 新增：防止游戏重复启动
+            if (GameState.gameStarted) {
+                console.log("【警告】游戏已经启动，忽略重复的startGame调用");
+                return;
+            }
+            
+            console.log("========== 【开始游戏】函数被调用 ==========");
+            console.log("版本:", window.version);
+            console.log("GameState:", GameState);
+            console.log("GameConfig:", GameConfig);
+            
+            try {
+                GameState.player = {
+                    name: "修仙者",
+                    initialAge: 18,
+                    realmIndex: 0,
+                    stageIndex: 0,
+                    qi: 0,
+                    stones: 50,
+                    cultivationPills: 0,
+                    realmPills: 0,
+                    currentRealmPillId: GameCalculator.getCurrentPillIds(0).realmPillId,
+                    baseSpeed: 1,
+                    lifespan: 20 * 365,
+                    maxLifespan: 20 * 365,
+                    breakthroughBonus: 0,
+                    usedRealmPill: false,
+                    time: 0,
+                    luck: 1,
+                    eventQuality: 1,
+                    globalBonus: 1,
+                    qiGainBonus: 1,
+                    moneyBonus: 1,
+                    pillPowerMultiplier: 1,
+                    pillCost: GameCalculator.getRealmPill(GameCalculator.getCurrentPillIds(0).realmPillId).cost,
+                    skillBoost: 1,
+                    skillPenalty: 1,
+                    skillEffectPenalty: 1,
+                    artifactBoost: 1,
+                    artifactPenalty: 1,
+                    sectBonusBoost: 1,
+                    priceIncrease: 1,
+                    breakthroughDifficulty: 1,
+                    manualCultivateBonus: 1,
+                    manualCultivatePenalty: 1,
+                    noPills: false,
+                    cantJoinSect: false,
+                    phoenixBlessing: false,
+                    breakthroughRandom: false,
+                    artifactResonance: 0,
+                    lastTribulation: 0,
+                    thiefBonus: false
+                };
+                
+                GameState.skillSystem = { learned: [] };
+                GameState.artifactSystem = { owned: null };
+                GameState.sectSystem = { owned: null, contribution: 0 };
+                
+                GameState.pillSystem = { 
+                    cultivationPills: {}, 
+                    realmPills: {} 
+                };
+                GameConfig.cultivationPills.forEach(pill => {
+                    if (!GameState.pillSystem.cultivationPills[pill.id]) {
+                        GameState.pillSystem.cultivationPills[pill.id] = 0;
+                    }
+                });
+                GameConfig.realmPills.forEach(pill => {
+                    if (!GameState.pillSystem.realmPills[pill.id]) {
+                        GameState.pillSystem.realmPills[pill.id] = 0;
+                    }
+                });
+                
+                GameState.talentSystem = [];
+                const availableTalents = [...GameConfig.talents];
+                for (let i = 0; i < 3; i++) {
+                    const randomIndex = Math.floor(Math.random() * availableTalents.length);
+                    const selectedTalent = availableTalents[randomIndex];
+                    GameState.talentSystem.push(selectedTalent);
+                    selectedTalent.effect(GameState.player);
+                    if (selectedTalent.id === "thief") GameState.player.thiefBonus = true;
+                }
+                
+                console.log("【玩家数据】初始化完成:", GameState.player);
+                console.log("【天赋】选择完成:", GameState.talentSystem.map(function(t) { return t.name; }));
+                
+                GameUI.initStableUI();
+                
+                const cover = document.getElementById('coverContainer');
+                const game = document.getElementById('gameContainer');
+                if (cover) {
+                    cover.style.opacity = '0';
+                    setTimeout(function() {
+                        cover.style.display = 'none';
+                        if (game) {
+                            game.style.display = 'block';
+                            game.style.opacity = '0';
+                            setTimeout(function() {
+                                game.style.opacity = '1';
+                                game.style.transition = 'opacity 0.5s ease';
+                            }, 50);
+                        }
+                    }, 500);
+                }
+                
+                if (GameState.gameLoop) {
+                    clearInterval(GameState.gameLoop);
+                    GameState.gameLoop = null;
+                }
+                GameState.gameLoop = setInterval(function() { GameLoop.update(); }, 1000);
+                console.log("【游戏循环】已启动");
+                
+                GameUI.update();
+                GameUI.log("🎮 游戏开始！踏入修仙之路...");
+                GameUI.log("💡 提示：按 ` 键可切换调试模式");
+                console.log("========== 游戏初始化全部完成 ==========");
+                
+                GameState.gameStarted = true; // 标记游戏已启动
+                
+            } catch (error) {
+                console.error("【致命错误】游戏初始化失败:", error);
+                alert("游戏启动失败:\n" + error.message + "\n\n请按F12查看控制台详情");
+                throw error;
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("========== DOMContentLoaded 事件触发 ==========");
+            const debugInfo = document.getElementById('debugInfo');
+            const loadStatus = document.getElementById('loadStatus');
+            if (debugInfo) debugInfo.style.display = 'block';
+            if (loadStatus) loadStatus.textContent = '状态: DOM加载完成';
+            
+            checkFunctions();
+            
+            setTimeout(function() {
+                const startBtn = document.getElementById('startBtn');
+                if (startBtn) {
+                    // 移除可能存在的旧事件监听器
+                    startBtn.onclick = null;
+                    startBtn.addEventListener('click', function() {
+                        console.log("【按钮点击】开始游戏");
+                        startGame();
+                    });
+                    if (loadStatus) loadStatus.textContent = '状态: 按钮已就绪';
+                } else {
+                    console.error("【错误】找不到开始按钮！");
+                }
+            }, 100);
+            
+            console.log("========== 初始化脚本执行完毕 ==========");
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === '`') {
+                toggleDebug();
+            }
+        });
+    </script>
+</body>
+</html>
